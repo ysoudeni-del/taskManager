@@ -1,21 +1,20 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createHashRouter } from "react-router-dom";
 import App from "../App";
 import Home from "../components/Home";
-import ErrorPage from '../pages/ErrorPage';
+import ErrorPage from "../pages/ErrorPage";
 
-const router = createBrowserRouter([
-    {
+const router = createHashRouter([
+  {
+    path: "/",
+    errorElement: <ErrorPage />,
+    element: <App />,
+    children: [
+      {
         path: "/",
-        errorElement: <ErrorPage />,
-        element: <App />,
-        children: [
-            {
-                path: "/",
-                element: <Home />
-            },
-        ],
-    },
+        element: <Home />,
+      },
+    ],
+  },
 ]);
-
 
 export default router;
