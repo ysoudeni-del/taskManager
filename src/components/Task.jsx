@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+const API_URL = "https://taskmanager-1-wp93.onrender.com/api/tasks";
+
 const Task = () => {
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState("");
@@ -28,13 +30,12 @@ const Task = () => {
       try {
         const token = localStorage.getItem("token");
 
-        const response = await fetch(
-          "http://localhost:5https://taskmanager-1-wp93.onrender.com000/api/tasks",
-          {
-            cache: "no-store",
-            headers: { Authorization: `Bearer ${token}` },
+        const response = await fetch(API_URL, {
+          cache: "no-store",
+          headers: {
+            Authorization: `Bearer ${token}`,
           },
-        );
+        });
 
         if (!response.ok) {
           throw new Error("Failed to load tasks");
@@ -53,7 +54,7 @@ const Task = () => {
 
         setTasks(formattedTasks);
       } catch (error) {
-        console.error(error);
+        console.error("Load Tasks Error:", error);
         alert("Could not load tasks from server");
       } finally {
         setIsLoaded(true);
@@ -63,8 +64,7 @@ const Task = () => {
     fetchTasks();
   }, []);
 
-  // Task Management Functions
-
+  // Add Task
   const handleAddTask = async () => {
     const taskText = newTask.trim();
 
@@ -73,7 +73,7 @@ const Task = () => {
     try {
       const token = localStorage.getItem("token");
 
-      const response = await fetch("https://taskmanager-1-wp93.onrender.com", {
+      const response = await fetch(API_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -122,6 +122,7 @@ const Task = () => {
     }
   };
 
+  // Complete / Uncomplete Task
   const toggleTaskCompletion = async (taskId) => {
     try {
       const task = tasks.find((t) => t.id === taskId);
@@ -129,19 +130,16 @@ const Task = () => {
 
       const token = localStorage.getItem("token");
 
-      const response = await fetch(
-        `https://taskmanager-1-wp93.onrender.com/${taskId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            completed: !task.completed,
-          }),
+      const response = await fetch(`${API_URL}/${taskId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      );
+        body: JSON.stringify({
+          completed: !task.completed,
+        }),
+      });
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -163,120 +161,119 @@ const Task = () => {
     }
   };
 
-  
-const deleteTask = async (taskId) => {
-  try {
-    const token = localStorage.getItem("token");
+  // Delete Task
+  const deleteTask = async (taskId) => {
+    try {
+      const token = localStorage.getItem("token");
 
-    const response = await fetch(`https://taskmanager-1-wp93.onrender.com/api/tasks/${taskId}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+      const response = await fetch(`${API_URL}/${taskId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to delete task");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete task");
+      }
+
+      setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+
+      console.log("Task deleted successfully");
+    } catch (error) {
+      console.error("Delete Error:", error);
+      alert(error.message);
     }
+  };
 
-    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
-
-    console.log("Task deleted successfully");
-  } catch (error) {
-    console.error("Delete Error:", error);
-    alert(error.message);
-  }
-};
-
-
+  // Start Editing Task
   const handleEditTask = (index, task) => {
     setEditIndex(index);
     setEditTaskText(task.text);
   };
 
- 
-const saveEditTask = async (taskId) => {
-  try {
-    const token = localStorage.getItem("token");
+  // Save Edited Task
+  const saveEditTask = async (taskId) => {
+    try {
+      const token = localStorage.getItem("token");
 
-    const response = await fetch(`https://taskmanager-1-wp93.onrender.com/api/tasks/${taskId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        title: editTaskText.trim(),
-      }),
-    });
+      const response = await fetch(`${API_URL}/${taskId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: editTaskText.trim(),
+        }),
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to edit task");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to edit task");
+      }
+
+      const updatedTask = await response.json();
+
+      setTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task.id === taskId ? { ...task, text: updatedTask.title } : task,
+        ),
+      );
+
+      setEditIndex(null);
+
+      console.log("Task edited successfully:", updatedTask);
+    } catch (error) {
+      console.error("Edit Error:", error);
+      alert(error.message);
     }
+  };
 
-    const updatedTask = await response.json();
+  // Update Task Priority
+  const updateTaskPriority = async (taskId, priority) => {
+    try {
+      const token = localStorage.getItem("token");
 
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === taskId ? { ...task, text: updatedTask.title } : task,
-      ),
-    );
-
-    setEditIndex(null);
-    console.log("Task edited successfully:", updatedTask);
-  } catch (error) {
-    console.error("Edit Error:", error);
-    alert(error.message);
-  }
-};
-
-
- 
-const updateTaskPriority = async (taskId, priority) => {
-  try {
-    const token = localStorage.getItem("token");
-
-    const response = await fetch(
-      `https://taskmanager-1-wp93.onrender.com/${taskId}`,
-      {
+      const response = await fetch(`${API_URL}/${taskId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ priority }),
-      },
-    );
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to update priority");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update priority");
+      }
+
+      const updatedTask = await response.json();
+
+      setTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task.id === taskId
+            ? { ...task, priority: updatedTask.priority }
+            : task,
+        ),
+      );
+
+      console.log("Priority updated:", updatedTask);
+    } catch (error) {
+      console.error("Priority Error:", error);
+      alert(error.message);
     }
+  };
 
-    const updatedTask = await response.json();
-
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === taskId ? { ...task, priority: updatedTask.priority } : task,
-      ),
-    );
-
-    console.log("Priority updated:", updatedTask);
-  } catch (error) {
-    console.error("Priority Error:", error);
-    alert(error.message);
-  }
-};
-
-
-  // Sort and Filter Functions
+  // Priority Order
   const getPriorityOrder = (priority) => {
     const order = { high: 3, medium: 2, low: 1 };
     return order[priority] || 0;
   };
 
+  // Sort Tasks
   const sortTasks = (tasksToSort) => {
     return [...tasksToSort].sort((a, b) => {
       const multiplier = sortDirection === "desc" ? -1 : 1;
@@ -287,20 +284,23 @@ const updateTaskPriority = async (taskId, priority) => {
             (getPriorityOrder(b.priority) - getPriorityOrder(a.priority)) *
             multiplier
           );
+
         case "alphabetical":
           return a.text.localeCompare(b.text) * multiplier;
+
         case "completion":
           return (
             (a.completed === b.completed ? 0 : a.completed ? 1 : -1) *
             multiplier
           );
-        default: // date
+
+        default:
           return (b.timestamp - a.timestamp) * multiplier;
       }
     });
   };
 
-  // Filter tasks based on search, active tab, and sort
+  // Filter and Sort Tasks
   const filteredAndSortedTasks = sortTasks(
     tasks.filter((task) => {
       const matchesSearch = task.text
@@ -315,22 +315,23 @@ const updateTaskPriority = async (taskId, priority) => {
       return matchesSearch && matchesFilter;
     }),
   );
+
   const completedTasks = tasks.filter((task) => task.completed).length;
 
   const pendingTasks = tasks.length - completedTasks;
-
   const totalTasks = tasks.length;
 
   const progressPercentage =
     totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
-  // Priority color mapping
+  // Priority Colors
   const getPriorityColor = (priority) => {
     const colors = {
       high: "text-red-400",
       medium: "text-yellow-400",
       low: "text-blue-400",
     };
+
     return colors[priority] || "text-gray-400";
   };
 
@@ -392,6 +393,7 @@ const updateTaskPriority = async (taskId, priority) => {
             </div>
           </motion.div>
         </motion.div>
+
         {/* Progress Overview */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
@@ -423,6 +425,7 @@ const updateTaskPriority = async (taskId, priority) => {
             />
           </div>
         </motion.div>
+
         {/* Task Management Section */}
         <div className="backdrop-blur-xl bg-white/10 rounded-xl border border-white/20 p-6">
           {/* Search and Sort Controls */}
@@ -433,6 +436,7 @@ const updateTaskPriority = async (taskId, priority) => {
                   className="absolute left-3 top-3.5 text-gray-400"
                   size={16}
                 />
+
                 <input
                   type="text"
                   placeholder="Search tasks..."
@@ -441,6 +445,7 @@ const updateTaskPriority = async (taskId, priority) => {
                   className="w-full bg-black/20 text-white pl-10 pr-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-purple-500/50 transition-all border border-white/10"
                 />
               </div>
+
               <div className="flex gap-2">
                 <select
                   value={sortCriteria}
@@ -452,6 +457,7 @@ const updateTaskPriority = async (taskId, priority) => {
                   <option value="alphabetical">Alphabetical</option>
                   <option value="completion">Completion</option>
                 </select>
+
                 <button
                   onClick={() =>
                     setSortDirection((prev) =>
@@ -465,6 +471,7 @@ const updateTaskPriority = async (taskId, priority) => {
                 </button>
               </div>
             </div>
+
             {/* Filter Tabs */}
             <div className="flex flex-wrap gap-2 mb-4">
               {[
@@ -501,12 +508,10 @@ const updateTaskPriority = async (taskId, priority) => {
                 onChange={(e) => setNewTask(e.target.value)}
                 onKeyPress={handleKeyPress}
               />
+
               <button
                 type="button"
-                onClick={() => {
-                  console.log("ADD CLICKED");
-                  handleAddTask();
-                }}
+                onClick={handleAddTask}
                 className="relative z-50 cursor-pointer py-3 bg-gradient-to-r from-pink-500 to-blue-600 text-white px-6 rounded-lg flex items-center justify-center gap-2 transition-all duration-300 hover:scale-105"
               >
                 <Plus size={18} /> Add
@@ -573,11 +578,13 @@ const updateTaskPriority = async (taskId, priority) => {
                                 >
                                   {task.text}
                                 </p>
+
                                 <Flag
                                   size={14}
                                   className={getPriorityColor(task.priority)}
                                 />
                               </div>
+
                               <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
                                 <Calendar size={12} />
                                 <span>{task.createdAt}</span>
@@ -616,6 +623,7 @@ const updateTaskPriority = async (taskId, priority) => {
                               <Edit2 size={16} />
                             </button>
                           )}
+
                           <button
                             onClick={() => deleteTask(task.id)}
                             className="p-2 text-gray-400 hover:text-red-400 transition-all duration-300 hover:scale-110"
