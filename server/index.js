@@ -1,10 +1,13 @@
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
-const authRoutes = require("./routes/authRoutes");
+const path = require("path");
+
 require("dotenv").config({
-  path: require("path").join(__dirname, ".env"),
+  path: path.join(__dirname, ".env"),
 });
+
+const authRoutes = require("./routes/authRoutes");
 const taskRoutes = require("./routes/taskRoutes");
 
 const app = express();
@@ -18,26 +21,23 @@ app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
+        return callback(null, true);
       }
+
+      return callback(new Error("Not allowed by CORS"));
     },
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
+
 app.use(express.json());
-app.use(
-  cors({
-    origin: [
-      "https://taskmanager-frontend-d6tt.onrender.com",
-      "http://localhost:5173",
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  }),
-);
+
+// Auth Routes
+app.use("/api/auth", authRoutes);
+
+// Task Routes
+app.use("/api/tasks", taskRoutes);
 
 // Test API
 app.get("/api", (req, res) => {
@@ -45,9 +45,6 @@ app.get("/api", (req, res) => {
     message: "Task Manager API is running!",
   });
 });
-
-// Task Routes
-app.use("/api/tasks", taskRoutes);
 
 // Connect to MongoDB
 mongoose
