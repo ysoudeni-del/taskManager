@@ -22,41 +22,95 @@ const Task = () => {
   const [sortDirection, setSortDirection] = useState("desc");
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load tasks from localStorage
+  // Load tasks from MongoDB
   useEffect(() => {
-    const storedTasks = localStorage.getItem("tasks");
+    const fetchTasks = async () => {
+      try {
+        const token = localStorage.getItem("token");
 
-    if (storedTasks) {
-      setTasks(JSON.parse(storedTasks));
-    }
+        const response = await fetch("http://localhost:5000/api/tasks", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-    setIsLoaded(true);
+        if (!response.ok) {
+          throw new Error("Failed to load tasks");
+        }
+
+        const data = await response.json();
+
+        const formattedTasks = data.map((task) => ({
+          id: task._id,
+          text: task.title,
+          completed: task.completed,
+          priority: task.priority || "medium",
+          createdAt: new Date(task.createdAt).toLocaleDateString(),
+          timestamp: new Date(task.createdAt).getTime(),
+        }));
+
+        setTasks(formattedTasks);
+      } catch (error) {
+        console.error(error);
+        alert("Could not load tasks from server");
+      } finally {
+        setIsLoaded(true);
+      }
+    };
+
+    fetchTasks();
   }, []);
 
-  // Save tasks whenever they change
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem("tasks", JSON.stringify(tasks));
-    }
-  }, [tasks, isLoaded]);
-
   // Task Management Functions
-  const handleAddTask = () => {
+
+  const handleAddTask = async () => {
     const taskText = newTask.trim();
 
     if (!taskText) return;
 
-    const newTaskObj = {
-      id: Date.now(),
-      text: taskText,
-      completed: false,
-      createdAt: new Date().toLocaleDateString(),
-      priority: "medium",
-      timestamp: Date.now(),
-    };
+    try {
+      const token = localStorage.getItem("token");
 
-    setTasks((prevTasks) => [...prevTasks, newTaskObj]);
-    setNewTask("");
+      const response = await fetch("http://localhost:5000/api/tasks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: taskText,
+          description: "",
+          priority: "medium",
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to add task");
+      }
+
+      const data = await response.json();
+
+      const newTaskObj = {
+        id: data._id,
+        text: data.title,
+        completed: data.completed,
+        createdAt: data.createdAt
+          ? new Date(data.createdAt).toLocaleDateString()
+          : new Date().toLocaleDateString(),
+        priority: data.priority || "medium",
+        timestamp: data.createdAt
+          ? new Date(data.createdAt).getTime()
+          : Date.now(),
+      };
+
+      setTasks((prevTasks) => [...prevTasks, newTaskObj]);
+      setNewTask("");
+
+      console.log("Task saved successfully:", data);
+    } catch (error) {
+      console.error("Add Task Error:", error);
+      alert(error.message);
+    }
   };
 
   const handleKeyPress = (event) => {
@@ -65,37 +119,151 @@ const Task = () => {
     }
   };
 
-  const toggleTaskCompletion = (taskId) => {
-    setTasks(
-      tasks.map((task) =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task,
-      ),
-    );
+  const toggleTaskCompletion = async (taskId) => {
+    try {
+      const task = tasks.find((t) => t.id === taskId);
+      if (!task) return;
+
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(
+        `http://localhost:5000/api/tasks/${taskId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            completed: !task.completed,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update task");
+      }
+
+      const updatedTask = await response.json();
+
+      setTasks((prevTasks) =>
+        prevTasks.map((t) =>
+          t.id === taskId ? { ...t, completed: updatedTask.completed } : t,
+        ),
+      );
+
+      console.log("Task completion updated:", updatedTask);
+    } catch (error) {
+      console.error("Update Error:", error);
+      alert(error.message);
+    }
   };
 
-  const deleteTask = (taskId) => {
-    setTasks(tasks.filter((task) => task.id !== taskId));
-  };
+  
+const deleteTask = async (taskId) => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to delete task");
+    }
+
+    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+
+    console.log("Task deleted successfully");
+  } catch (error) {
+    console.error("Delete Error:", error);
+    alert(error.message);
+  }
+};
+
 
   const handleEditTask = (index, task) => {
     setEditIndex(index);
     setEditTaskText(task.text);
   };
 
-  const saveEditTask = (taskId) => {
-    setTasks(
-      tasks.map((task) =>
-        task.id === taskId ? { ...task, text: editTaskText } : task,
+ 
+const saveEditTask = async (taskId) => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        title: editTaskText.trim(),
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to edit task");
+    }
+
+    const updatedTask = await response.json();
+
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === taskId ? { ...task, text: updatedTask.title } : task,
       ),
     );
-    setEditIndex(null);
-  };
 
-  const updateTaskPriority = (taskId, priority) => {
-    setTasks(
-      tasks.map((task) => (task.id === taskId ? { ...task, priority } : task)),
+    setEditIndex(null);
+    console.log("Task edited successfully:", updatedTask);
+  } catch (error) {
+    console.error("Edit Error:", error);
+    alert(error.message);
+  }
+};
+
+
+ 
+const updateTaskPriority = async (taskId, priority) => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ priority }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to update priority");
+    }
+
+    const updatedTask = await response.json();
+
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === taskId ? { ...task, priority: updatedTask.priority } : task,
+      ),
     );
-  };
+
+    console.log("Priority updated:", updatedTask);
+  } catch (error) {
+    console.error("Priority Error:", error);
+    alert(error.message);
+  }
+};
+
 
   // Sort and Filter Functions
   const getPriorityOrder = (priority) => {
@@ -471,6 +639,6 @@ const Task = () => {
       </div>
     </div>
   );
-};;
+};
 
 export default Task;
