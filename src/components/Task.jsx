@@ -28,10 +28,13 @@ const Task = () => {
       try {
         const token = localStorage.getItem("token");
 
-        const response = await fetch("http://localhost:5000/api/tasks", {
-          cache: "no-store",
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await fetch(
+          "http://localhost:5https://taskmanager-1-wp93.onrender.com000/api/tasks",
+          {
+            cache: "no-store",
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
 
         if (!response.ok) {
           throw new Error("Failed to load tasks");
@@ -70,7 +73,7 @@ const Task = () => {
     try {
       const token = localStorage.getItem("token");
 
-      const response = await fetch("http://localhost:5000/api/tasks", {
+      const response = await fetch("https://taskmanager-1-wp93.onrender.com", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -127,7 +130,7 @@ const Task = () => {
       const token = localStorage.getItem("token");
 
       const response = await fetch(
-        `http://localhost:5000/api/tasks/${taskId}`,
+        `https://taskmanager-1-wp93.onrender.com/${taskId}`,
         {
           method: "PUT",
           headers: {
@@ -165,7 +168,7 @@ const deleteTask = async (taskId) => {
   try {
     const token = localStorage.getItem("token");
 
-    const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+    const response = await fetch(`https://taskmanager-1-wp93.onrender.com/api/tasks/${taskId}`, {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -197,7 +200,7 @@ const saveEditTask = async (taskId) => {
   try {
     const token = localStorage.getItem("token");
 
-    const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+    const response = await fetch(`https://taskmanager-1-wp93.onrender.com/api/tasks/${taskId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -235,14 +238,17 @@ const updateTaskPriority = async (taskId, priority) => {
   try {
     const token = localStorage.getItem("token");
 
-    const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+    const response = await fetch(
+      `https://taskmanager-1-wp93.onrender.com/${taskId}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ priority }),
       },
-      body: JSON.stringify({ priority }),
-    });
+    );
 
     if (!response.ok) {
       const errorData = await response.json();
